@@ -148,50 +148,7 @@ else
     ok "greetd enabled."
 fi
 
-# ── Step 8: Configure Noctalia Plugins ──────────────────────────────────────
-info "Configuring Noctalia plugins..."
-NOC_CONF="$REAL_HOME/.config/noctalia/noctalia.toml"
-NOC_CONF_DIR="$(dirname "$NOC_CONF")"
-mkdir -p "$NOC_CONF_DIR"
-
-if ! grep -q 'noctalia/wallhaven' "$NOC_CONF" 2>/dev/null; then
-    cat >> "$NOC_CONF" << 'EOF'
-[plugins]
-enabled = [
-    "noctalia/wallhaven",
-    "noctalia/wallpaper_depth",
-    "kenn/keybind-cheatsheet",
-    "felipeartur/ai-usagebar",
-]
-
-[[plugins.source]]
-name = "official"
-kind = "git"
-location = "https://github.com/noctalia-dev/official-plugins"
-enabled = true
-
-[[plugins.source]]
-name = "community"
-kind = "git"
-location = "https://github.com/noctalia-dev/community-plugins"
-enabled = true
-EOF
-    chown -R "$REAL_USER:$REAL_USER" "$NOC_CONF_DIR"
-    ok "Noctalia plugins configured."
-else
-    ok "Noctalia plugins already configured, skipping."
-fi
-
-# ── Step 9: Install ai-usagebar CLI ─────────────────────────────────────────
-if command -v ai-usagebar &>/dev/null; then
-    ok "ai-usagebar already installed, skipping."
-else
-    info "Installing ai-usagebar CLI..."
-    aur_install ai-usagebar-bin
-    ok "ai-usagebar installed."
-fi
-
-# ── Step 10: Install Alacritty ───────────────────────────────────────────────
+# ── Step 8: Install Alacritty ───────────────────────────────────────────────
 if pacman -Qi alacritty &>/dev/null; then
     ok "Alacritty already installed, skipping."
 else
@@ -269,16 +226,14 @@ else
     ok "nano syntax highlighting installed."
 fi
 
-# ── Step 14: Remove vim and firefox ─────────────────────────────────────────
-info "Removing vim and firefox..."
-for pkg in vim firefox; do
-    if pacman -Qi "$pkg" &>/dev/null; then
-        pacman -Rns --noconfirm "$pkg"
-        ok "$pkg removed."
-    else
-        ok "$pkg not installed, skipping."
-    fi
-done
+# ── Step 12: Remove firefox ──────────────────────────────────────────────────
+if pacman -Qi firefox &>/dev/null; then
+    info "Removing firefox..."
+    pacman -Rns --noconfirm firefox
+    ok "firefox removed."
+else
+    ok "firefox not installed, skipping."
+fi
 
 # ── Step 15: Install rtk ────────────────────────────────────────────────────
 if command -v rtk &>/dev/null; then
@@ -290,7 +245,7 @@ else
 fi
 
 info "Initializing rtk for opencode..."
-sudo -u "$REAL_USER" rtk init -g --opencode 2>/dev/null || warn "rtk init failed (may already be configured)."
+sudo -u "$REAL_USER" rtk init -g --opencode || warn "rtk init may have failed."
 
 # ── Step 16: Install remaining packages ──────────────────────────────────────
 info "Installing remaining packages..."
@@ -329,7 +284,6 @@ echo -e "╚══════════════════════�
 echo ""
 echo -e "Installed:"
 echo -e "  ${CYAN}Noctalia Shell V5${NC}  - Desktop shell"
-echo -e "  ${CYAN}Noctalia Plugins${NC}  - wallhaven, wallpaper-depth, keybind-cheatsheet, ai-usagebar"
 echo -e "  ${CYAN}Noctalia Greeter${NC}  - Login screen (greetd)"
 echo -e "  ${CYAN}Alacritty${NC}         - Terminal with MapleMono NF @ 12pt"
 echo -e "  ${CYAN}nano${NC}              - Text editor with syntax highlighting"
@@ -344,7 +298,7 @@ echo -e "  ${CYAN}mpv${NC}               - Media player"
 echo -e "  ${CYAN}fastfetch${NC}         - System info"
 echo -e "  ${CYAN}fish${NC}               - Default shell"
 echo ""
-echo -e "Removed: vim, firefox"
+echo -e "Removed: firefox"
 echo ""
 echo -e "Reboot recommended. greetd will launch the Noctalia Greeter at login."
 echo ""
