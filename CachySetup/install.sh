@@ -4,7 +4,7 @@ set -euo pipefail
 # ── CachyOS Post-Install Script ──────────────────────────────────────────────
 # For fresh CachyOS install (no DE, no display manager)
 # Installs: Paru, Noctalia Shell V5, greetd, Alacritty, MapleMono,
-#           Noctalia plugins, git, opencode, zed, nano, rtk, and more
+#           Noctalia plugins, git, opencode, zed, nano, rtk, fish, and more
 # ──────────────────────────────────────────────────────────────────────────────
 
 RED='\033[0;31m'
@@ -130,21 +130,21 @@ chown greeter:greeter /var/lib/noctalia-greeter
 
 ok "greetd configured."
 
-# ── Step 7: Disable existing display manager and start greetd ───────────────
+# ── Step 7: Disable existing display manager for next boot ──────────────────
 DM_LINK="/etc/systemd/system/display-manager.service"
 if [[ -L "$DM_LINK" ]]; then
     CURRENT_DM=$(readlink -f "$DM_LINK" 2>/dev/null || basename "$(readlink "$DM_LINK")")
     if [[ "$CURRENT_DM" != *"greetd"* ]]; then
-        warn "Disabling existing display manager: $CURRENT_DM"
-        systemctl disable --now "$(basename "$CURRENT_DM")" 2>/dev/null || true
+        warn "Disabling existing display manager: $CURRENT_DM (will take effect on reboot)"
+        systemctl disable "$(basename "$CURRENT_DM")" 2>/dev/null || true
         rm -f "$DM_LINK"
-        systemctl enable --now greetd.service
-        ok "Previous display manager disabled, greetd started."
+        systemctl enable greetd.service
+        ok "Previous display manager disabled, greetd enabled for next boot."
     else
         ok "greetd is already the display manager."
     fi
 else
-    systemctl enable --now greetd.service 2>/dev/null || true
+    systemctl enable greetd.service 2>/dev/null || true
     ok "greetd enabled."
 fi
 
@@ -305,20 +305,20 @@ info "Installing Floorp browser and Hydra game launcher..."
 aur_install floorp-bin hydra-launcher-bin
 ok "All packages installed."
 
-# ── Step 17: Set zsh as default shell ────────────────────────────────────────
-if [[ "$(getent passwd "$REAL_USER" | cut -d: -f7)" == "$(which zsh)" ]]; then
-    ok "zsh already default shell for $REAL_USER, skipping."
+# ── Step 17: Set fish as default shell ───────────────────────────────────────
+if [[ "$(getent passwd "$REAL_USER" | cut -d: -f7)" == "$(which fish)" ]]; then
+    ok "fish already default shell for $REAL_USER, skipping."
 else
-    info "Installing zsh and setting as default shell..."
-    pacman -S --needed --noconfirm zsh
+    info "Installing fish and setting as default shell..."
+    pacman -S --needed --noconfirm fish
 
-    ZSH_BIN=$(which zsh)
-    if ! grep -q "$ZSH_BIN" /etc/shells; then
-        echo "$ZSH_BIN" >> /etc/shells
+    FISH_BIN=$(which fish)
+    if ! grep -q "$FISH_BIN" /etc/shells; then
+        echo "$FISH_BIN" >> /etc/shells
     fi
 
-    sudo -u "$REAL_USER" chsh -s "$ZSH_BIN"
-    ok "zsh set as default shell for $REAL_USER."
+    sudo -u "$REAL_USER" chsh -s "$FISH_BIN"
+    ok "fish set as default shell for $REAL_USER."
 fi
 
 # ── Done ─────────────────────────────────────────────────────────────────────
@@ -342,7 +342,7 @@ echo -e "  ${CYAN}Floorp${NC}            - Web browser"
 echo -e "  ${CYAN}Hydra${NC}             - Game launcher"
 echo -e "  ${CYAN}mpv${NC}               - Media player"
 echo -e "  ${CYAN}fastfetch${NC}         - System info"
-echo -e "  ${CYAN}zsh${NC}               - Default shell"
+echo -e "  ${CYAN}fish${NC}               - Default shell"
 echo ""
 echo -e "Removed: vim, firefox"
 echo ""

@@ -21,7 +21,7 @@ Reboot after it finishes.
 7. Installs rtk and initializes it for opencode
 8. Removes vim and firefox
 9. Installs opencode, zed, dolphin, floorp, hydra, mpv, fastfetch
-10. Switches default shell to zsh
+10. Switches default shell to fish
 
 ## Packages Installed
 
@@ -46,7 +46,7 @@ Reboot after it finishes.
 | `hydra-launcher-bin` | AUR | Game launcher |
 | `mpv` | [extra] | Media player |
 | `fastfetch` | [extra] | System info |
-| `zsh` | [extra] | Shell |
+| `fish` | [extra] | Shell |
 
 ## Removed Packages
 
