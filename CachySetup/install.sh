@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ── CachyOS Post-Install Script ──────────────────────────────────────────────
 # For fresh CachyOS install (no DE, no display manager)
-# Installs: Paru, Noctalia Shell V5, Umbriel, SwayFX, Kitty, MapleMono,
+# Installs: Paru, Noctalia Shell V5, Umbriel, Kitty, MapleMono,
 #           greetd, noctalia plugins, git, opencode, zed, dolphin, floorp, mpv, zsh
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -39,7 +39,7 @@ aur_install() {
 echo -e "${CYAN}"
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║        CachyOS Post-Install Setup Script                   ║"
-echo "║  Noctalia Shell V5 + Umbriel + SwayFX + Kitty + Tools     ║"
+echo "║  Noctalia Shell V5 + Umbriel + Kitty + Tools              ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -141,32 +141,7 @@ else
     ok "xwayland-satellite installed."
 fi
 
-# ── Step 7: Install SwayFX ──────────────────────────────────────────────────
-if command -v swayfx &>/dev/null; then
-    ok "SwayFX already installed, skipping."
-else
-    info "Installing SwayFX..."
-    if command -v sway &>/dev/null; then
-        warn "Sway detected. Removing sway before installing swayfx (they conflict)..."
-        pacman -Rns --noconfirm sway
-        ok "Sway removed."
-    fi
-    info "Installing wlroots0.19 (swayfx dependency)..."
-    aur_install wlroots0.19
-    SWAYFX_TEMP="/tmp/swayfx-build"
-    rm -rf "$SWAYFX_TEMP"
-    mkdir -p "$SWAYFX_TEMP"
-    chown "$REAL_USER:$REAL_USER" "$SWAYFX_TEMP"
-    sudo -u "$REAL_USER" bash -c "
-        cd '$SWAYFX_TEMP'
-        git clone https://aur.archlinux.org/swayfx.git .
-        makepkg -si --noconfirm
-    "
-    rm -rf "$SWAYFX_TEMP"
-    ok "SwayFX installed."
-fi
-
-# ── Step 8: Install Noctalia Greeter + greetd ───────────────────────────────
+# ── Step 7: Install Noctalia Greeter + greetd ───────────────────────────────
 info "Installing Noctalia Greeter and greetd..."
 pacman -S --needed --noconfirm greetd cage dbus
 if pacman -Qi noctalia-greeter &>/dev/null; then
@@ -325,7 +300,6 @@ echo ""
 echo -e "Installed:"
 echo -e "  ${CYAN}Noctalia Shell V5${NC}  - Desktop shell"
 echo -e "  ${CYAN}Umbriel${NC}           - Wayland compositor (built from source)"
-echo -e "  ${CYAN}SwayFX${NC}            - Wayland compositor (sway fork with eye candy)"
 echo -e "  ${CYAN}Noctalia Plugins${NC}  - wallhaven + wallpaper-depth"
 echo -e "  ${CYAN}Noctalia Greeter${NC}  - Login screen (greetd)"
 echo -e "  ${CYAN}Kitty${NC}             - Terminal with MapleMono NF @ 12pt"
