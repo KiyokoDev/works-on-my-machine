@@ -124,7 +124,9 @@ else
         meson compile -C build
     "
 
-    meson install -C "$UMBRIEL_DIR/build"
+    cd "$UMBRIEL_DIR/build"
+    meson install
+    cd /
     rm -rf "$UMBRIEL_DIR"
     ok "Umbriel compositor built and installed."
 fi
