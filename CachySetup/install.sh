@@ -32,6 +32,10 @@ REAL_USER="$SUDO_USER"
 REAL_HOME=$(eval echo "~$REAL_USER")
 UMBRIEL_DIR="/tmp/umbriel-build"
 
+aur_install() {
+    sudo -u "$REAL_USER" paru -S --needed --noconfirm "$@"
+}
+
 echo -e "${CYAN}"
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║        CachyOS Post-Install Setup Script                   ║"
@@ -84,54 +88,74 @@ else
 fi
 
 # ── Step 4: Install Noctalia Shell V5 from [extra] ──────────────────────────
-info "Installing Noctalia Shell V5..."
-pacman -S --needed --noconfirm noctalia
-ok "Noctalia Shell V5 installed."
+if pacman -Qi noctalia &>/dev/null; then
+    ok "Noctalia Shell V5 already installed, skipping."
+else
+    info "Installing Noctalia Shell V5..."
+    pacman -S --needed --noconfirm noctalia
+    ok "Noctalia Shell V5 installed."
+fi
 
 # ── Step 5: Build Umbriel from source ────────────────────────────────────────
-info "Building Umbriel compositor from source..."
+if command -v umbriel &>/dev/null; then
+    ok "Umbriel already installed, skipping."
+else
+    info "Building Umbriel compositor from source..."
 
-UMBRIEL_BUILD_DEPS=(
-    meson
-    ninja
-    pkgconf
-    gcc
-    git
-    wayland
-    wayland-protocols
-    wlroots0.20
-    libinput
-    pixman
-    libdrm
-    cairo
-    pango
-    libxkbcommon
-    tomlplusplus
-    nlohmann-json
-)
+    UMBRIEL_BUILD_DEPS=(
+        meson
+        ninja
+        pkgconf
+        gcc
+        git
+        wayland
+        wayland-protocols
+        wlroots0.20
+        libinput
+        pixman
+        libdrm
+        cairo
+        pango
+        libxkbcommon
+        tomlplusplus
+        nlohmann-json
+    )
 
-pacman -S --needed --noconfirm "${UMBRIEL_BUILD_DEPS[@]}"
+    pacman -S --needed --noconfirm "${UMBRIEL_BUILD_DEPS[@]}"
 
-rm -rf "$UMBRIEL_DIR"
-sudo -u "$REAL_USER" git clone https://github.com/noctalia-dev/umbriel.git "$UMBRIEL_DIR"
+    rm -rf "$UMBRIEL_DIR"
+    sudo -u "$REAL_USER" git clone https://github.com/noctalia-dev/umbriel.git "$UMBRIEL_DIR"
 
-sudo -u "$REAL_USER" bash -c "
-    cd '$UMBRIEL_DIR'
-    meson setup build --buildtype=release
-    ninja -C build
-"
+    sudo -u "$REAL_USER" bash -c "
+        cd '$UMBRIEL_DIR'
+        meson setup build --buildtype=release
+        ninja -C build
+    "
 
-ninja -C "$UMBRIEL_DIR/build" install
-rm -rf "$UMBRIEL_DIR"
-ok "Umbriel compositor built and installed."
+    ninja -C "$UMBRIEL_DIR/build" install
+    rm -rf "$UMBRIEL_DIR"
+    ok "Umbriel compositor built and installed."
+fi
 
 # ── Step 6: Install xwayland-satellite ───────────────────────────────────────
-info "Installing xwayland-satellite (Xwayland support)..."
-pacman -S --needed --noconfirm xwayland-satellite
-ok "xwayland-satellite installed."
+if pacman -Qi xwayland-satellite &>/dev/null; then
+    ok "xwayland-satellite already installed, skipping."
+else
+    info "Installing xwayland-satellite (Xwayland support)..."
+    pacman -S --needed --noconfirm xwayland-satellite
+    ok "xwayland-satellite installed."
+fi
 
 # ── Step 7: Install SwayFX ──────────────────────────────────────────────────
+if command -v swayfx &>/dev/null; then
+    ok "SwayFX already installed, skipping."
+else
     info "Installing SwayFX..."
+    if command -v sway &>/dev/null; then
+        warn "Sway detected. Removing sway before installing swayfx (they conflict)..."
+        pacman -Rns --noconfirm sway
+        ok "Sway removed."
+    fi
     SWAYFX_TEMP="/tmp/swayfx-build"
     rm -rf "$SWAYFX_TEMP"
     mkdir -p "$SWAYFX_TEMP"
@@ -143,13 +167,18 @@ ok "xwayland-satellite installed."
         makepkg -si --noconfirm
     "
     rm -rf "$SWAYFX_TEMP"
-ok "SwayFX installed."
+    ok "SwayFX installed."
+fi
 
 # ── Step 8: Install Noctalia Greeter + greetd ───────────────────────────────
 info "Installing Noctalia Greeter and greetd..."
 pacman -S --needed --noconfirm greetd cage dbus
-paru -S --needed --noconfirm noctalia-greeter
-ok "Noctalia Greeter and greetd installed."
+if pacman -Qi noctalia-greeter &>/dev/null; then
+    ok "Noctalia Greeter already installed, skipping."
+else
+    aur_install noctalia-greeter
+    ok "Noctalia Greeter installed."
+fi
 
 # ── Step 9: Configure greetd ────────────────────────────────────────────────
 info "Configuring greetd..."
@@ -199,14 +228,22 @@ else
 fi
 
 # ── Step 11: Install Kitty ───────────────────────────────────────────────────
-info "Installing Kitty terminal..."
-pacman -S --needed --noconfirm kitty
-ok "Kitty installed."
+if pacman -Qi kitty &>/dev/null; then
+    ok "Kitty already installed, skipping."
+else
+    info "Installing Kitty terminal..."
+    pacman -S --needed --noconfirm kitty
+    ok "Kitty installed."
+fi
 
 # ── Step 12: Install MapleMono NF font ───────────────────────────────────────
-info "Installing MapleMono NF font (terminal glyphs + ligatures)..."
-paru -S --needed --noconfirm maplemono-nf-unhinted
-ok "MapleMono NF installed."
+if pacman -Qi maplemono-nf-unhinted &>/dev/null || ls "$REAL_HOME/.local/share/fonts/"*apleMono* &>/dev/null; then
+    ok "MapleMono NF already installed, skipping."
+else
+    info "Installing MapleMono NF font (terminal glyphs + ligatures)..."
+    aur_install maplemono-nf-unhinted
+    ok "MapleMono NF installed."
+fi
 
 # ── Step 13: Configure Kitty with MapleMono ──────────────────────────────────
 info "Configuring Kitty..."
@@ -246,7 +283,7 @@ chown -R "$REAL_USER:$REAL_USER" "$KITTY_CONF"
 ok "Kitty configured with MapleMono NF at size 12."
 
 # ── Step 14: Install remaining packages ──────────────────────────────────────
-info "Installing remaining packages (opencode, zed, dolphin, mpv, fastfetch)..."
+info "Installing remaining packages..."
 pacman -S --needed --noconfirm \
     opencode \
     zed \
@@ -255,25 +292,33 @@ pacman -S --needed --noconfirm \
     fastfetch
 
 info "Installing Floorp browser and Hydra game launcher..."
-paru -S --needed --noconfirm floorp-bin hydra-launcher-bin
+aur_install floorp-bin hydra-launcher-bin
 ok "All packages installed."
 
 # ── Step 15: Set zsh as default shell ────────────────────────────────────────
-info "Installing zsh and setting as default shell..."
-pacman -S --needed --noconfirm zsh
+if [[ "$(getent passwd "$REAL_USER" | cut -d: -f7)" == "$(which zsh)" ]]; then
+    ok "zsh already default shell for $REAL_USER, skipping."
+else
+    info "Installing zsh and setting as default shell..."
+    pacman -S --needed --noconfirm zsh
 
-ZSH_BIN=$(which zsh)
-if ! grep -q "$ZSH_BIN" /etc/shells; then
-    echo "$ZSH_BIN" >> /etc/shells
+    ZSH_BIN=$(which zsh)
+    if ! grep -q "$ZSH_BIN" /etc/shells; then
+        echo "$ZSH_BIN" >> /etc/shells
+    fi
+
+    sudo -u "$REAL_USER" chsh -s "$ZSH_BIN"
+    ok "zsh set as default shell for $REAL_USER."
 fi
 
-sudo -u "$REAL_USER" chsh -s "$ZSH_BIN"
-ok "zsh set as default shell for $REAL_USER."
-
 # ── Step 16: Enable greetd service ──────────────────────────────────────────
-info "Enabling greetd service..."
-systemctl enable greetd.service
-ok "greetd enabled at boot."
+if systemctl is-enabled greetd.service &>/dev/null; then
+    ok "greetd already enabled, skipping."
+else
+    info "Enabling greetd service..."
+    systemctl enable greetd.service
+    ok "greetd enabled at boot."
+fi
 
 # ── Done ─────────────────────────────────────────────────────────────────────
 echo ""
