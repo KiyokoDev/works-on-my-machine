@@ -3,8 +3,8 @@ set -euo pipefail
 
 # ── CachyOS Post-Install Script ──────────────────────────────────────────────
 # For fresh CachyOS install (no DE, no display manager)
-# Installs: Paru, Noctalia Shell V5, Umbriel, Kitty, MapleMono,
-#           greetd, noctalia plugins, git, opencode, zed, dolphin, floorp, mpv, zsh
+# Installs: Paru, Noctalia Shell V5, greetd, Alacritty, MapleMono,
+#           Noctalia plugins, git, opencode, zed, nano, rtk, and more
 # ──────────────────────────────────────────────────────────────────────────────
 
 RED='\033[0;31m'
@@ -30,7 +30,6 @@ fi
 
 REAL_USER="$SUDO_USER"
 REAL_HOME=$(eval echo "~$REAL_USER")
-UMBRIEL_DIR="/tmp/umbriel-build"
 
 aur_install() {
     sudo -u "$REAL_USER" paru -S --needed --noconfirm "$@"
@@ -39,7 +38,7 @@ aur_install() {
 echo -e "${CYAN}"
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║        CachyOS Post-Install Setup Script                   ║"
-echo "║  Noctalia Shell V5 + Umbriel + Kitty + Tools              ║"
+echo "║  Noctalia Shell V5 + Alacritty + Plugins + Tools          ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -88,49 +87,7 @@ else
     ok "Noctalia Shell V5 installed."
 fi
 
-# ── Step 4: Build Umbriel from source ────────────────────────────────────────
-if command -v umbriel &>/dev/null; then
-    ok "Umbriel already installed, skipping."
-else
-    info "Building Umbriel compositor from source..."
-
-    UMBRIEL_BUILD_DEPS=(
-        gcc
-        meson
-        ninja
-        pkgconf
-        git
-        wayland
-        wayland-protocols
-        wlroots0.20
-        libinput
-        systemd-libs
-        pixman
-        libdrm
-        cairo
-        pango
-        libxkbcommon
-        tomlplusplus
-        nlohmann-json
-    )
-
-    pacman -S --needed --noconfirm "${UMBRIEL_BUILD_DEPS[@]}"
-
-    rm -rf "$UMBRIEL_DIR"
-    sudo -u "$REAL_USER" git clone https://github.com/noctalia-dev/umbriel.git "$UMBRIEL_DIR"
-
-    sudo -u "$REAL_USER" bash -c "
-        cd '$UMBRIEL_DIR'
-        meson setup build --buildtype=release --prefix=/usr
-        meson compile -C build
-    "
-
-    cd "$UMBRIEL_DIR/build" && meson install
-    rm -rf "$UMBRIEL_DIR"
-    ok "Umbriel compositor built and installed."
-fi
-
-# ── Step 5: Install xwayland-satellite ───────────────────────────────────────
+# ── Step 4: Install xwayland-satellite ───────────────────────────────────────
 if pacman -Qi xwayland-satellite &>/dev/null; then
     ok "xwayland-satellite already installed, skipping."
 else
@@ -139,7 +96,7 @@ else
     ok "xwayland-satellite installed."
 fi
 
-# ── Step 6: Install Noctalia Greeter + greetd ───────────────────────────────
+# ── Step 5: Install Noctalia Greeter + greetd ───────────────────────────────
 info "Installing greetd and dependencies..."
 pacman -S --needed --noconfirm greetd cage dbus
 
@@ -151,7 +108,7 @@ else
     ok "Noctalia Greeter installed."
 fi
 
-# ── Step 7: Configure greetd ────────────────────────────────────────────────
+# ── Step 6: Configure greetd ────────────────────────────────────────────────
 info "Configuring greetd..."
 
 cat > /etc/greetd/config.toml << 'GREETERCONF'
@@ -173,7 +130,7 @@ chown greeter:greeter /var/lib/noctalia-greeter
 
 ok "greetd configured."
 
-# ── Step 8: Disable existing display manager and start greetd ───────────────
+# ── Step 7: Disable existing display manager and start greetd ───────────────
 DM_LINK="/etc/systemd/system/display-manager.service"
 if [[ -L "$DM_LINK" ]]; then
     CURRENT_DM=$(readlink -f "$DM_LINK" 2>/dev/null || basename "$(readlink "$DM_LINK")")
@@ -191,8 +148,8 @@ else
     ok "greetd enabled."
 fi
 
-# ── Step 9: Configure Noctalia Plugins ──────────────────────────────────────
-info "Configuring Noctalia plugins (wallhaven, wallpaper-depth)..."
+# ── Step 8: Configure Noctalia Plugins ──────────────────────────────────────
+info "Configuring Noctalia plugins..."
 NOC_CONF="$REAL_HOME/.config/noctalia/noctalia.toml"
 NOC_CONF_DIR="$(dirname "$NOC_CONF")"
 mkdir -p "$NOC_CONF_DIR"
@@ -200,12 +157,23 @@ mkdir -p "$NOC_CONF_DIR"
 if ! grep -q 'noctalia/wallhaven' "$NOC_CONF" 2>/dev/null; then
     cat >> "$NOC_CONF" << 'EOF'
 [plugins]
-enabled = ["noctalia/wallhaven", "noctalia/wallpaper_depth", "noctalia/umbriel-companion"]
+enabled = [
+    "noctalia/wallhaven",
+    "noctalia/wallpaper_depth",
+    "kenn/keybind-cheatsheet",
+    "felipeartur/ai-usagebar",
+]
 
 [[plugins.source]]
 name = "official"
 kind = "git"
 location = "https://github.com/noctalia-dev/official-plugins"
+enabled = true
+
+[[plugins.source]]
+name = "community"
+kind = "git"
+location = "https://github.com/noctalia-dev/community-plugins"
 enabled = true
 EOF
     chown -R "$REAL_USER:$REAL_USER" "$NOC_CONF_DIR"
@@ -214,17 +182,26 @@ else
     ok "Noctalia plugins already configured, skipping."
 fi
 
-# ── Step 10: Install Kitty ───────────────────────────────────────────────────
-if pacman -Qi kitty &>/dev/null; then
-    ok "Kitty already installed, skipping."
+# ── Step 9: Install ai-usagebar CLI ─────────────────────────────────────────
+if command -v ai-usagebar &>/dev/null; then
+    ok "ai-usagebar already installed, skipping."
 else
-    info "Installing Kitty terminal..."
-    pacman -S --needed --noconfirm kitty
-    ok "Kitty installed."
+    info "Installing ai-usagebar CLI..."
+    aur_install ai-usagebar-bin
+    ok "ai-usagebar installed."
+fi
+
+# ── Step 10: Install Alacritty ───────────────────────────────────────────────
+if pacman -Qi alacritty &>/dev/null; then
+    ok "Alacritty already installed, skipping."
+else
+    info "Installing Alacritty terminal..."
+    pacman -S --needed --noconfirm alacritty
+    ok "Alacritty installed."
 fi
 
 # ── Step 11: Install MapleMono NF font ───────────────────────────────────────
-if pacman -Qi maplemono-nf-unhinted &>/dev/null || ls "$REAL_HOME/.local/share/fonts/"*apleMono* &>/dev/null; then
+if pacman -Qi maplemono-nf-unhinted &>/dev/null || ls "$REAL_HOME/.local/share/fonts/"*apleMono* &>/dev/null 2>&1; then
     ok "MapleMono NF already installed, skipping."
 else
     info "Installing MapleMono NF font (terminal glyphs + ligatures)..."
@@ -232,44 +209,90 @@ else
     ok "MapleMono NF installed."
 fi
 
-# ── Step 12: Configure Kitty with MapleMono ──────────────────────────────────
-info "Configuring Kitty..."
-KITTY_CONF="$REAL_HOME/.config/kitty"
-mkdir -p "$KITTY_CONF"
+# ── Step 12: Configure Alacritty with MapleMono ──────────────────────────────
+info "Configuring Alacritty..."
+ALACRITTY_CONF="$REAL_HOME/.config/alacritty"
+mkdir -p "$ALACRITTY_CONF"
 chown -R "$REAL_USER:$REAL_USER" "$REAL_HOME/.config"
 
-cat > "$KITTY_CONF/kitty.conf" << KITTYCONF
+cat > "$ALACRITTY_CONF/alacritty.toml" << 'ALACRITTYCONF'
 # ── Font ─────────────────────────────────────────────────────────────────────
-font_family      MapleMono NF
-bold_font        MapleMono NF Bold
-italic_font      MapleMono NF Italic
-bold_italic_font MapleMono NF Bold Italic
-font_size        12.0
+[font]
+size = 12.0
+
+[font.normal]
+family = "MapleMono NF"
+style = "Regular"
+
+[font.bold]
+family = "MapleMono NF"
+style = "Bold"
+
+[font.italic]
+family = "MapleMono NF"
+style = "Italic"
+
+[font.bold_italic]
+family = "MapleMono NF"
+style = "Bold Italic"
 
 # ── Cursor ───────────────────────────────────────────────────────────────────
-cursor_shape          beam
-cursor_blink_interval 0
+[cursor]
+style = { shape = "Beam", blinking = "Off" }
 
-# ── Scrollback ───────────────────────────────────────────────────────────────
-scrollback_lines 10000
-
-# ── Bell ─────────────────────────────────────────────────────────────────────
-enable_audio_bell no
+# ── Scrolling ────────────────────────────────────────────────────────────────
+[scrolling]
+history = 10000
 
 # ── Window ───────────────────────────────────────────────────────────────────
-window_padding_width 4
-hide_window_decorations no
+[window]
+padding = { x = 4, y = 4 }
+ALACRITTYCONF
 
-# ── Tab Bar ──────────────────────────────────────────────────────────────────
-tab_bar_edge   bottom
-tab_bar_style  powerline
-tab_powerline_style slanted
-KITTYCONF
+chown -R "$REAL_USER:$REAL_USER" "$ALACRITTY_CONF"
+ok "Alacritty configured with MapleMono NF at size 12."
 
-chown -R "$REAL_USER:$REAL_USER" "$KITTY_CONF"
-ok "Kitty configured with MapleMono NF at size 12."
+# ── Step 13: Install nano + syntax highlighting ──────────────────────────────
+if pacman -Qi nano &>/dev/null; then
+    ok "nano already installed, skipping."
+else
+    info "Installing nano..."
+    pacman -S --needed --noconfirm nano
+    ok "nano installed."
+fi
 
-# ── Step 13: Install remaining packages ──────────────────────────────────────
+if pacman -Qi nano-syntax-highlighting &>/dev/null; then
+    ok "nano-syntax-highlighting already installed, skipping."
+else
+    info "Installing nano syntax highlighting..."
+    aur_install nano-syntax-highlighting
+    ok "nano syntax highlighting installed."
+fi
+
+# ── Step 14: Remove vim and firefox ─────────────────────────────────────────
+info "Removing vim and firefox..."
+for pkg in vim firefox; do
+    if pacman -Qi "$pkg" &>/dev/null; then
+        pacman -Rns --noconfirm "$pkg"
+        ok "$pkg removed."
+    else
+        ok "$pkg not installed, skipping."
+    fi
+done
+
+# ── Step 15: Install rtk ────────────────────────────────────────────────────
+if command -v rtk &>/dev/null; then
+    ok "rtk already installed, skipping."
+else
+    info "Installing rtk..."
+    aur_install rtk
+    ok "rtk installed."
+fi
+
+info "Initializing rtk for opencode..."
+sudo -u "$REAL_USER" rtk init -g --opencode 2>/dev/null || warn "rtk init failed (may already be configured)."
+
+# ── Step 16: Install remaining packages ──────────────────────────────────────
 info "Installing remaining packages..."
 pacman -S --needed --noconfirm \
     opencode \
@@ -282,7 +305,7 @@ info "Installing Floorp browser and Hydra game launcher..."
 aur_install floorp-bin hydra-launcher-bin
 ok "All packages installed."
 
-# ── Step 14: Set zsh as default shell ────────────────────────────────────────
+# ── Step 17: Set zsh as default shell ────────────────────────────────────────
 if [[ "$(getent passwd "$REAL_USER" | cut -d: -f7)" == "$(which zsh)" ]]; then
     ok "zsh already default shell for $REAL_USER, skipping."
 else
@@ -306,12 +329,12 @@ echo -e "╚══════════════════════�
 echo ""
 echo -e "Installed:"
 echo -e "  ${CYAN}Noctalia Shell V5${NC}  - Desktop shell"
-echo -e "  ${CYAN}Umbriel${NC}           - Wayland compositor (built from source)"
-echo -e "  ${CYAN}Noctalia Plugins${NC}  - wallhaven + wallpaper-depth"
+echo -e "  ${CYAN}Noctalia Plugins${NC}  - wallhaven, wallpaper-depth, keybind-cheatsheet, ai-usagebar"
 echo -e "  ${CYAN}Noctalia Greeter${NC}  - Login screen (greetd)"
-echo -e "  ${CYAN}Kitty${NC}             - Terminal with MapleMono NF @ 12pt"
+echo -e "  ${CYAN}Alacritty${NC}         - Terminal with MapleMono NF @ 12pt"
+echo -e "  ${CYAN}nano${NC}              - Text editor with syntax highlighting"
 echo -e "  ${CYAN}Paru${NC}              - AUR helper"
-echo -e "  ${CYAN}Git${NC}               - Version control"
+echo -e "  ${CYAN}rtk${NC}               - Dev tool"
 echo -e "  ${CYAN}OpenCode${NC}          - AI terminal agent"
 echo -e "  ${CYAN}Zed${NC}               - Code editor"
 echo -e "  ${CYAN}Dolphin${NC}           - File manager"
@@ -320,6 +343,8 @@ echo -e "  ${CYAN}Hydra${NC}             - Game launcher"
 echo -e "  ${CYAN}mpv${NC}               - Media player"
 echo -e "  ${CYAN}fastfetch${NC}         - System info"
 echo -e "  ${CYAN}zsh${NC}               - Default shell"
+echo ""
+echo -e "Removed: vim, firefox"
 echo ""
 echo -e "Reboot recommended. greetd will launch the Noctalia Greeter at login."
 echo ""
