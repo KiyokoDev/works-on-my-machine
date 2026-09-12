@@ -174,13 +174,19 @@ chown greeter:greeter /var/lib/noctalia-greeter
 ok "greetd configured."
 
 # ── Step 8: Disable existing display manager ────────────────────────────────
-CURRENT_DM=$(systemctl show display-manager.service -p Unit --value 2>/dev/null || true)
-if [[ -n "$CURRENT_DM" && "$CURRENT_DM" != "greetd.service" ]]; then
-    warn "Disabling existing display manager: $CURRENT_DM"
-    systemctl disable --now "$CURRENT_DM"
-    ok "Previous display manager disabled."
+DM_LINK="/etc/systemd/system/display-manager.service"
+if [[ -L "$DM_LINK" ]]; then
+    CURRENT_DM=$(readlink -f "$DM_LINK" 2>/dev/null || basename "$(readlink "$DM_LINK")")
+    if [[ "$CURRENT_DM" != *"greetd"* ]]; then
+        warn "Disabling existing display manager: $CURRENT_DM"
+        systemctl disable --now "$(basename "$CURRENT_DM")" 2>/dev/null || true
+        rm -f "$DM_LINK"
+        ok "Previous display manager disabled."
+    else
+        ok "greetd is already the display manager."
+    fi
 else
-    ok "No conflicting display manager found."
+    ok "No display manager configured, skipping."
 fi
 
 # ── Step 9: Configure Noctalia Plugins ──────────────────────────────────────
