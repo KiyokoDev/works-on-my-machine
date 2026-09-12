@@ -70,7 +70,10 @@ if command -v paru &>/dev/null; then
     ok "Paru already installed, skipping."
 else
     info "Installing Paru..."
-    PARU_TEMP=$(sudo -u "$REAL_USER" mktemp -d)
+    PARU_TEMP="/tmp/paru-build"
+    rm -rf "$PARU_TEMP"
+    mkdir -p "$PARU_TEMP"
+    chown "$REAL_USER:$REAL_USER" "$PARU_TEMP"
     sudo -u "$REAL_USER" bash -c "
         cd '$PARU_TEMP'
         git clone https://aur.archlinux.org/paru.git .
