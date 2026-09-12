@@ -43,12 +43,7 @@ echo "║  Noctalia Shell V5 + Umbriel + SwayFX + Kitty + Tools     ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
-# ── Step 1: System Update ────────────────────────────────────────────────────
-info "Updating system..."
-pacman -Syu --noconfirm
-ok "System updated."
-
-# ── Step 2: Install base build tools ─────────────────────────────────────────
+# ── Step 1: Install base build tools ─────────────────────────────────────────
 info "Installing base development packages..."
 pacman -S --needed --noconfirm \
     base-devel \
@@ -156,6 +151,8 @@ else
         pacman -Rns --noconfirm sway
         ok "Sway removed."
     fi
+    info "Installing wlroots0.19 (swayfx dependency)..."
+    aur_install wlroots0.19
     SWAYFX_TEMP="/tmp/swayfx-build"
     rm -rf "$SWAYFX_TEMP"
     mkdir -p "$SWAYFX_TEMP"
@@ -163,7 +160,6 @@ else
     sudo -u "$REAL_USER" bash -c "
         cd '$SWAYFX_TEMP'
         git clone https://aur.archlinux.org/swayfx.git .
-        sed -i 's/wlroots0.19/wlroots0.20/g' PKGBUILD
         makepkg -si --noconfirm
     "
     rm -rf "$SWAYFX_TEMP"
