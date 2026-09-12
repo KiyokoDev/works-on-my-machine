@@ -1,6 +1,6 @@
 # CachyOS Setup Script
 
-Post-install script for Noctalia Shell V5 + Umbriel + SwayFX + Kitty + tools.
+Post-install script for Noctalia Shell V5 + Alacritty + plugins + tools.
 
 ## Usage
 
@@ -12,30 +12,33 @@ Reboot after it finishes.
 
 ## What It Does
 
-1. Updates system, removes yay if found, installs Paru
-2. Installs Noctalia Shell V5, builds Umbriel from source
-3. Installs SwayFX (removes sway if present, they conflict)
-4. Sets up greetd with Noctalia Greeter
-5. Enables Noctalia plugins: wallhaven, wallpaper-depth
-6. Installs Kitty with MapleMono NF font
-7. Installs opencode, zed, dolphin, floorp, hydra, mpv, fastfetch
-8. Switches default shell to zsh
+1. Installs Paru (removes yay if found)
+2. Installs Noctalia Shell V5
+3. Sets up greetd with Noctalia Greeter (disables existing display manager)
+4. Enables Noctalia plugins: wallhaven, wallpaper-depth, keybind-cheatsheet, ai-usagebar
+5. Installs Alacritty with MapleMono NF font
+6. Installs nano with syntax highlighting
+7. Installs rtk and initializes it for opencode
+8. Removes vim and firefox
+9. Installs opencode, zed, dolphin, floorp, hydra, mpv, fastfetch
+10. Switches default shell to zsh
 
 ## Packages Installed
 
 | Package | Source | Purpose |
 |---------|--------|---------|
 | `noctalia` | [extra] | Desktop shell |
-| `umbriel` | source | Wayland compositor |
-| `swayfx` | AUR | Wayland compositor (sway + effects) |
 | `xwayland-satellite` | [extra] | Xwayland support |
-| `noctalia-greeter` | AUR | Login screen |
+| `noctalia-greeter` | [extra] | Login screen |
 | `greetd` | [extra] | Display manager daemon |
 | `cage` | [extra] | Compositor for greeter |
-| `kitty` | [extra] | Terminal |
+| `alacritty` | [extra] | Terminal |
 | `maplemono-nf-unhinted` | AUR | Font |
+| `nano` | [extra] | Text editor |
+| `nano-syntax-highlighting` | AUR | Nano syntax colors |
+| `ai-usagebar-bin` | AUR | AI usage CLI for Noctalia plugin |
 | `paru` | AUR | AUR helper |
-| `git` | [extra] | Version control |
+| `rtk` | AUR | Dev tool |
 | `opencode` | [extra] | AI coding agent |
 | `zed` | [extra] | Code editor |
 | `dolphin` | [extra] | File manager |
@@ -45,16 +48,22 @@ Reboot after it finishes.
 | `fastfetch` | [extra] | System info |
 | `zsh` | [extra] | Shell |
 
+## Removed Packages
+
+- `vim` - replaced by nano
+- `firefox` - replaced by floorp
+
 ## Noctalia Plugins
 
 - **wallhaven** - Browse Wallhaven wallpapers from bar widget
-- **wallpaper-depth** - Place desktop widgets behind foreground scenery in wallpaper
+- **wallpaper-depth** - Place desktop widgets behind foreground scenery
+- **keybind-cheatsheet** - Searchable keybind panel (Hyprland/Mango/Niri)
+- **ai-usagebar** - Track AI plan usage in bar
 
-Plugins configured directly in `~/.config/noctalia/noctalia.toml`. Active on first login.
+Plugins configured in `~/.config/noctalia/noctalia.toml`. Active on first login.
 
 ## Troubleshooting
 
-- **Umbriel won't build**: `pacman -S wlroots0.20`
 - **Greeter black screen**: `journalctl -u greetd -f`
-- **Kitty font missing**: `fc-cache -fv`
-- **SwayFX conflicts with sway**: script removes sway automatically before installing swayfx
+- **Alacritty font missing**: `fc-cache -fv`
+- **ai-usagebar not showing**: configure providers in `~/.config/ai-usagebar/config.toml`
