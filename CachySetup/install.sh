@@ -131,13 +131,18 @@ pacman -S --needed --noconfirm xwayland-satellite
 ok "xwayland-satellite installed."
 
 # ── Step 7: Install SwayFX ──────────────────────────────────────────────────
-info "Installing SwayFX..."
-if command -v sway &>/dev/null && ! command -v swayfx &>/dev/null; then
-    warn "Sway detected. Removing sway before installing swayfx (they conflict)..."
-    pacman -Rns --noconfirm sway
-    ok "Sway removed."
-fi
-paru -S --needed --noconfirm swayfx
+    info "Installing SwayFX..."
+    SWAYFX_TEMP="/tmp/swayfx-build"
+    rm -rf "$SWAYFX_TEMP"
+    mkdir -p "$SWAYFX_TEMP"
+    chown "$REAL_USER:$REAL_USER" "$SWAYFX_TEMP"
+    sudo -u "$REAL_USER" bash -c "
+        cd '$SWAYFX_TEMP'
+        git clone https://aur.archlinux.org/swayfx.git .
+        sed -i 's/wlroots0.19/wlroots0.20/g' PKGBUILD
+        makepkg -si --noconfirm
+    "
+    rm -rf "$SWAYFX_TEMP"
 ok "SwayFX installed."
 
 # ── Step 8: Install Noctalia Greeter + greetd ───────────────────────────────
