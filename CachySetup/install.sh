@@ -47,16 +47,13 @@ echo -e "${NC}"
 info "Installing base development packages..."
 pacman -S --needed --noconfirm \
     base-devel \
-    git \
-    cmake \
+    gcc \
     meson \
     ninja \
-    pkgconf \
-    gcc \
-    clang
+    pkgconf
 ok "Base build tools installed."
 
-# ── Step 3: Remove yay, install Paru ────────────────────────────────────────
+# ── Step 2: Remove yay, install Paru ────────────────────────────────────────
 info "Managing AUR helper (removing yay, installing paru)..."
 if command -v yay &>/dev/null; then
     warn "yay detected. Removing..."
@@ -82,7 +79,7 @@ else
     ok "Paru installed."
 fi
 
-# ── Step 4: Install Noctalia Shell V5 from [extra] ──────────────────────────
+# ── Step 3: Install Noctalia Shell V5 from [extra] ──────────────────────────
 if pacman -Qi noctalia &>/dev/null; then
     ok "Noctalia Shell V5 already installed, skipping."
 else
@@ -91,29 +88,29 @@ else
     ok "Noctalia Shell V5 installed."
 fi
 
-# ── Step 5: Build Umbriel from source ────────────────────────────────────────
+# ── Step 4: Build Umbriel from source ────────────────────────────────────────
 if command -v umbriel &>/dev/null; then
     ok "Umbriel already installed, skipping."
 else
     info "Building Umbriel compositor from source..."
 
     UMBRIEL_BUILD_DEPS=(
+        gcc
         meson
         ninja
         pkgconf
-        gcc
         git
         wayland
         wayland-protocols
         wlroots0.20
         libinput
+        libudev
         pixman
         libdrm
         cairo
         pango
         libxkbcommon
         tomlplusplus
-        nlohmann-json
     )
 
     pacman -S --needed --noconfirm "${UMBRIEL_BUILD_DEPS[@]}"
@@ -123,16 +120,16 @@ else
 
     sudo -u "$REAL_USER" bash -c "
         cd '$UMBRIEL_DIR'
-        meson setup build --buildtype=release
-        ninja -C build
+        meson setup build --buildtype=release --prefix=/usr
+        meson compile -C build
     "
 
-    ninja -C "$UMBRIEL_DIR/build" install
+    meson install -C "$UMBRIEL_DIR/build"
     rm -rf "$UMBRIEL_DIR"
     ok "Umbriel compositor built and installed."
 fi
 
-# ── Step 6: Install xwayland-satellite ───────────────────────────────────────
+# ── Step 5: Install xwayland-satellite ───────────────────────────────────────
 if pacman -Qi xwayland-satellite &>/dev/null; then
     ok "xwayland-satellite already installed, skipping."
 else
@@ -141,26 +138,27 @@ else
     ok "xwayland-satellite installed."
 fi
 
-# ── Step 7: Install Noctalia Greeter + greetd ───────────────────────────────
-info "Installing Noctalia Greeter and greetd..."
+# ── Step 6: Install Noctalia Greeter + greetd ───────────────────────────────
+info "Installing greetd and dependencies..."
 pacman -S --needed --noconfirm greetd cage dbus
+
 if pacman -Qi noctalia-greeter &>/dev/null; then
     ok "Noctalia Greeter already installed, skipping."
 else
-    aur_install noctalia-greeter
+    info "Installing Noctalia Greeter..."
+    pacman -S --needed --noconfirm noctalia-greeter
     ok "Noctalia Greeter installed."
 fi
 
-# ── Step 9: Configure greetd ────────────────────────────────────────────────
+# ── Step 7: Configure greetd ────────────────────────────────────────────────
 info "Configuring greetd..."
-GREETER_SESSION=$(which noctalia-greeter-session 2>/dev/null || echo "/usr/local/bin/noctalia-greeter-session")
 
-cat > /etc/greetd/config.toml << GREETERCONF
+cat > /etc/greetd/config.toml << 'GREETERCONF'
 [terminal]
 vt = 1
 
 [default_session]
-command = "${GREETER_SESSION}"
+command = "/usr/bin/noctalia-greeter-session"
 user = "greeter"
 GREETERCONF
 
@@ -174,13 +172,22 @@ chown greeter:greeter /var/lib/noctalia-greeter
 
 ok "greetd configured."
 
-# ── Step 10: Configure Noctalia Plugins ──────────────────────────────────────
+# ── Step 8: Disable existing display manager ────────────────────────────────
+CURRENT_DM=$(systemctl show display-manager.service -p Unit --value 2>/dev/null || true)
+if [[ -n "$CURRENT_DM" && "$CURRENT_DM" != "greetd.service" ]]; then
+    warn "Disabling existing display manager: $CURRENT_DM"
+    systemctl disable --now "$CURRENT_DM"
+    ok "Previous display manager disabled."
+else
+    ok "No conflicting display manager found."
+fi
+
+# ── Step 9: Configure Noctalia Plugins ──────────────────────────────────────
 info "Configuring Noctalia plugins (wallhaven, wallpaper-depth)..."
 NOC_CONF="$REAL_HOME/.config/noctalia/noctalia.toml"
 NOC_CONF_DIR="$(dirname "$NOC_CONF")"
 mkdir -p "$NOC_CONF_DIR"
 
-# Append plugin config if not already present
 if ! grep -q 'noctalia/wallhaven' "$NOC_CONF" 2>/dev/null; then
     cat >> "$NOC_CONF" << 'EOF'
 [plugins]
@@ -198,7 +205,7 @@ else
     ok "Noctalia plugins already configured, skipping."
 fi
 
-# ── Step 11: Install Kitty ───────────────────────────────────────────────────
+# ── Step 10: Install Kitty ───────────────────────────────────────────────────
 if pacman -Qi kitty &>/dev/null; then
     ok "Kitty already installed, skipping."
 else
@@ -207,7 +214,7 @@ else
     ok "Kitty installed."
 fi
 
-# ── Step 12: Install MapleMono NF font ───────────────────────────────────────
+# ── Step 11: Install MapleMono NF font ───────────────────────────────────────
 if pacman -Qi maplemono-nf-unhinted &>/dev/null || ls "$REAL_HOME/.local/share/fonts/"*apleMono* &>/dev/null; then
     ok "MapleMono NF already installed, skipping."
 else
@@ -216,7 +223,7 @@ else
     ok "MapleMono NF installed."
 fi
 
-# ── Step 13: Configure Kitty with MapleMono ──────────────────────────────────
+# ── Step 12: Configure Kitty with MapleMono ──────────────────────────────────
 info "Configuring Kitty..."
 KITTY_CONF="$REAL_HOME/.config/kitty"
 mkdir -p "$KITTY_CONF"
@@ -253,7 +260,7 @@ KITTYCONF
 chown -R "$REAL_USER:$REAL_USER" "$KITTY_CONF"
 ok "Kitty configured with MapleMono NF at size 12."
 
-# ── Step 14: Install remaining packages ──────────────────────────────────────
+# ── Step 13: Install remaining packages ──────────────────────────────────────
 info "Installing remaining packages..."
 pacman -S --needed --noconfirm \
     opencode \
@@ -266,7 +273,7 @@ info "Installing Floorp browser and Hydra game launcher..."
 aur_install floorp-bin hydra-launcher-bin
 ok "All packages installed."
 
-# ── Step 15: Set zsh as default shell ────────────────────────────────────────
+# ── Step 14: Set zsh as default shell ────────────────────────────────────────
 if [[ "$(getent passwd "$REAL_USER" | cut -d: -f7)" == "$(which zsh)" ]]; then
     ok "zsh already default shell for $REAL_USER, skipping."
 else
@@ -282,12 +289,12 @@ else
     ok "zsh set as default shell for $REAL_USER."
 fi
 
-# ── Step 16: Enable greetd service ──────────────────────────────────────────
+# ── Step 15: Enable greetd service ──────────────────────────────────────────
 if systemctl is-enabled greetd.service &>/dev/null; then
     ok "greetd already enabled, skipping."
 else
     info "Enabling greetd service..."
-    systemctl enable greetd.service
+    systemctl enable --now greetd.service
     ok "greetd enabled at boot."
 fi
 
