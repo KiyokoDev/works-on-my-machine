@@ -111,7 +111,7 @@ else
         pango
         libxkbcommon
         tomlplusplus
-        nlohmann-json
+        nlohmann_json
     )
 
     pacman -S --needed --noconfirm "${UMBRIEL_BUILD_DEPS[@]}"
@@ -125,9 +125,7 @@ else
         meson compile -C build
     "
 
-    cd "$UMBRIEL_DIR/build"
-    meson install
-    cd /
+    cd "$UMBRIEL_DIR/build" && meson install
     rm -rf "$UMBRIEL_DIR"
     ok "Umbriel compositor built and installed."
 fi
