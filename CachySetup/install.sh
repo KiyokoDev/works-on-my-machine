@@ -111,6 +111,7 @@ else
         pango
         libxkbcommon
         tomlplusplus
+        nlohmann-json
     )
 
     pacman -S --needed --noconfirm "${UMBRIEL_BUILD_DEPS[@]}"
