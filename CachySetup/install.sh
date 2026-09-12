@@ -104,7 +104,7 @@ else
         wayland-protocols
         wlroots0.20
         libinput
-        libudev
+        systemd-libs
         pixman
         libdrm
         cairo
