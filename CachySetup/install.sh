@@ -191,7 +191,7 @@ mkdir -p "$NOC_CONF_DIR"
 if ! grep -q 'noctalia/wallhaven' "$NOC_CONF" 2>/dev/null; then
     cat >> "$NOC_CONF" << 'EOF'
 [plugins]
-enabled = ["noctalia/wallhaven", "noctalia/wallpaper_depth"]
+enabled = ["noctalia/wallhaven", "noctalia/wallpaper_depth", "noctalia/umbriel-companion"]
 
 [[plugins.source]]
 name = "official"
